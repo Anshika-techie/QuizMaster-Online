@@ -1,9 +1,10 @@
 import 'dotenv/config';
+import { pathToFileURL } from 'url';
 import bcrypt from 'bcryptjs';
-import mongoose from 'mongoose';
 import User from './models/User.js';
 import Quiz from './models/Quiz.js';
 import Result from './models/Result.js';
+import connectDB, { disconnectDB } from './config/db.js';
 
 const q = (text, options, correctIndex) => ({ text, options, correctIndex });
 
@@ -53,10 +54,7 @@ const quizzes = [
   },
 ];
 
-async function run() {
-  if (!process.env.MONGO_URI) throw new Error('MONGO_URI is missing. Copy .env.example to .env first.');
-  await mongoose.connect(process.env.MONGO_URI);
-
+export async function seedDemo() {
   const emails = ['instructor@quizmaster.dev', 'student@quizmaster.dev'];
   const old = await User.find({ email: { $in: emails } });
   const oldIds = old.map((u) => u._id);
@@ -69,14 +67,19 @@ async function run() {
   await User.create({ name: 'Rohan Mehta', email: emails[1], password, role: 'student' });
 
   await Quiz.insertMany(quizzes.map((quiz) => ({ ...quiz, createdBy: instructor._id })));
-
-  console.log('Seeded 3 quizzes and 2 demo accounts (password: demo1234)');
-  console.log('  instructor@quizmaster.dev');
-  console.log('  student@quizmaster.dev');
-  await mongoose.disconnect();
 }
 
-run().catch((err) => {
-  console.error(err.message);
-  process.exit(1);
-});
+// `npm run seed` resets the demo data manually
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  connectDB()
+    .then(seedDemo)
+    .then(() => {
+      console.log('Demo data reset. Logins (password demo1234): student@quizmaster.dev, instructor@quizmaster.dev');
+      return disconnectDB();
+    })
+    .then(() => process.exit(0))
+    .catch((err) => {
+      console.error(err.message);
+      process.exit(1);
+    });
+}

@@ -22,29 +22,23 @@ A full-stack online examination platform. Instructors create quizzes, students t
 - `Question`, `Tracker` and `Timer` are wrapped in `React.memo`, and all handlers passed to them are stable `useCallback`s
 - Keyboard handling and auto-submit read the latest state through refs instead of re-binding listeners
 
-## Run it locally
+## Run it locally (2 commands)
 
-You need Node 18+ and MongoDB running locally (or a MongoDB Atlas connection string).
-
-**1. Backend**
+You only need Node 18+. No MongoDB install, no config files.
 
 ```bash
-cd server
-npm install
-cp .env.example .env      # then edit MONGO_URI / JWT_SECRET if needed
-npm run seed              # creates demo accounts and 3 sample quizzes
-npm run dev               # API on http://localhost:5000
+npm run setup     # installs root, server and client packages
+npm run dev       # starts API (port 5000) and app (port 5173) together
 ```
 
-**2. Frontend** (in a second terminal)
+Open http://localhost:5173
 
-```bash
-cd client
-npm install
-npm run dev               # app on http://localhost:5173
-```
+- On the first run the server downloads a local MongoDB once (about a minute, internet needed). After that it starts in seconds.
+- Your data is saved in `server/.data`, so it survives restarts. Delete that folder to start fresh.
+- Demo data is added automatically when the database is empty. `npm run seed --prefix server` resets it.
+- To use your own MongoDB or Atlas instead, copy `server/.env.example` to `server/.env` and set `MONGO_URI`.
 
-**Demo accounts** (created by the seed script, password `demo1234`)
+**Demo accounts** (password `demo1234`)
 
 | Role | Email |
 | --- | --- |
@@ -56,7 +50,7 @@ npm run dev               # app on http://localhost:5173
 ```
 server/
   index.js            Express app and route wiring
-  seed.js             Demo users and quizzes
+  seed.js             Demo users and quizzes (auto-runs on empty DB)
   config/db.js        MongoDB connection
   middleware/auth.js  JWT check and role guard
   models/             User, Quiz, Result

@@ -1,10 +1,15 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
-import connectDB from './config/db.js';
+import connectDB, { disconnectDB } from './config/db.js';
+import User from './models/User.js';
+import { seedDemo } from './seed.js';
 import authRoutes from './routes/auth.js';
 import quizRoutes from './routes/quizzes.js';
 import resultRoutes from './routes/results.js';
+
+// Works with zero setup. Set a real JWT_SECRET in server/.env for production.
+process.env.JWT_SECRET ||= 'dev-only-secret-change-me';
 
 const app = express();
 
@@ -26,9 +31,31 @@ app.use((err, _req, res, _next) => {
 
 const PORT = process.env.PORT || 5000;
 
-connectDB()
-  .then(() => app.listen(PORT, () => console.log(`API running on http://localhost:${PORT}`)))
-  .catch((err) => {
-    console.error('MongoDB connection failed:', err.message);
+async function start() {
+  await connectDB();
+  if ((await User.countDocuments()) === 0) {
+    await seedDemo();
+    console.log('Empty database detected: added demo accounts and sample quizzes');
+  }
+  const server = app.listen(PORT, () => console.log(`API running on http://localhost:${PORT}`));
+  server.on('error', (err) => {
+    console.error(
+      err.code === 'EADDRINUSE'
+        ? `Port ${PORT} is already in use. Close the other program using it, or set PORT in server/.env`
+        : err.message
+    );
     process.exit(1);
   });
+}
+
+start().catch((err) => {
+  console.error('Could not start the server:', err.message);
+  process.exit(1);
+});
+
+for (const signal of ['SIGINT', 'SIGTERM']) {
+  process.on(signal, async () => {
+    await disconnectDB().catch(() => {});
+    process.exit(0);
+  });
+}

@@ -16,7 +16,11 @@ async function request(path, { method = 'GET', body } = {}) {
     throw new Error('Cannot reach the server. Check your connection and try again');
   }
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.message || 'Something went wrong');
+  if (!res.ok) {
+    if (data.message) throw new Error(data.message);
+    if (res.status >= 500) throw new Error('The server is not responding. Make sure the backend is running (npm run dev in the project root)');
+    throw new Error(`Request failed (${res.status})`);
+  }
   return data;
 }
 
